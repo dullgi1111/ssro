@@ -1,0 +1,17 @@
+{
+  "name": "스스로 · AI 자기주도학습",
+  "short_name": "스스로",
+  "description": "강의자료를 AI로 나만의 문제집으로 바꾸고, 개념 학습부터 CBT 시험까지 스스로 공부하는 앱",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1ef",
+  "theme_color": "#23302d",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
