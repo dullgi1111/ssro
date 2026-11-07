@@ -543,6 +543,8 @@ h1, h2, h3 { font-weight: 800; letter-spacing: -.01em; }
 .fb-sheet .btn.big { min-width: 160px; }
 @media (max-width: 560px) { .fb-sheet .btn.big { width: 100%; } }
 .sheet-space { height: 150px; }
+body:has(.fb-sheet) .toast, body:has(.resume-fab) .toast { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 561px) { body:has(.fb-sheet) .toast { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); } body:has(.resume-fab) .toast { bottom: 100px; } }
 @keyframes up { from { transform: translateY(100%); } to { transform: none; } }
 .xpfloat { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); z-index: 90; font-size: 30px; font-weight: 900; color: var(--gold-dark); text-shadow: 0 2px 0 #fff, 0 0 12px rgba(255,194,26,.6); pointer-events: none; animation: floatup 1.2s ease-out forwards; }
 @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1); } }

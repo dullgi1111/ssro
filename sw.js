@@ -1,6 +1,6 @@
 /* 스스로 — 오프라인용 서비스워커 (http/https로 열었을 때만 동작)
    파일을 고치면 VERSION을 올려야 폰에 새 버전이 반영된다. */
-const VERSION = 'ssro-v7';
+const VERSION = 'ssro-v8';
 const FILES = [
   './', './index.html', './css/app.css', './js/core.js', './js/extract.js', './js/gen.js', './js/app.js',
   './lib/pdf.min.js', './lib/pdf.worker.min.js', './lib/jszip.min.js', './manifest.webmanifest',
