@@ -49,6 +49,7 @@ const Gen = (() => {
     const lt = (s.match(/[가-힣A-Za-z]/g) || []).length;
     const open = (s.match(/[(（[]/g) || []).length, close = (s.match(/[)）\]]/g) || []).length;
     const words = s.split(/\s+/).filter(w => (w.match(/[가-힣A-Za-z]/g) || []).length >= 2).length;   // 두 글자 이상 낱말 수
+    if (s.includes('[수식]')) return false;   // 깨진 수식이 섞인 문장은 출제하지 않음
     return s.length >= 15 && lt / s.length >= 0.45 && words >= 4 && open <= close && !/[(,·]$/.test(s) && !/^[:;,)\]·]/.test(s)
       && !/https?:|www\.|doi[:.]|\bpp?\.\s*\d|ISBN|\.do\?|\d+\(\d+\),\s*\d+\s*[-–]\s*\d+|\(\d{4}[a-z]?\)\s*[.,]/i.test(s);
   }
@@ -131,8 +132,10 @@ const Gen = (() => {
     if (cache.has(ck)) { const A = cache.get(ck); BARE = A.bare; return A; }
     const facts = [], secs = [], defs = [], stat = new Map();
     const bump = t => { if (!stat.has(t)) stat.set(t, { n: 0, units: new Set(), defn: false, title: false }); return stat.get(t); };
-    BARE = collectBare(subj.materials.flatMap(m => m.sections.flatMap(s => [s.title, ...s.lines])));
-    for (const m of subj.materials) {
+    // 예전에 올린 자료도 깨진 글자를 정리해서 사용 (Extract.tidy)
+    const mats = subj.materials.map(m => ({ ...m, sections: m.sections.map(s => ({ ...s, title: Extract.tidy(s.title), lines: s.lines.map(Extract.tidy).filter(Boolean) })) }));
+    BARE = collectBare(mats.flatMap(m => m.sections.flatMap(s => [s.title, ...s.lines])));
+    for (const m of mats) {
       m.sections.forEach((sec, si) => {
         const sid = m.id + ':' + si, sf = [];
         for (const line of sec.lines) {

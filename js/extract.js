@@ -16,11 +16,21 @@ const Extract = (() => {
 
   const BULLET = /^[\s•●○◦▪▫■□◆◇►▶▷➢➤✓✔✗\-–—*·∙ㆍ→⇒]+/;
   const MARK = /^[•●○◦▪▫■□◆◇►▶▷➢➤✓✔✗\-–—*·∙ㆍ→⇒]/;
+  // 표준 문자로 바꿀 수 없는 글자(사용자 전용 영역 등 — 한글 수식 편집기 글꼴이 대표적) → "[수식]" 표시
+  //  * 이 코드는 PDF 읽기 도구가 파일마다 임시로 붙인 번호라 원래 기호로 되돌릴 수 없음
+  const ODD = /[-�]/u;
+  function fixPUA(s) {
+    return String(s || '')
+      .replace(/[-�](?:[\s-�=+\-×·*/^_(),.\d])*/gu, m => ODD.test(m) ? ' [수식] ' : m)
+      .replace(/(\s*\[수식\]\s*)+/g, ' [수식] ')
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+  }
+  const onlyFormula = s => !s.replace(/\[수식\]/g, '').replace(/[\s=+\-×·*/^_(),.\d]/g, '');
   function cleanLine(s) {
-    return String(s || '').replace(/ /g, ' ').replace(/[​-‍﻿]/g, '')
+    return fixPUA(s).replace(/ /g, ' ').replace(/[​-‍﻿]/g, '')
       .replace(BULLET, '').replace(/\s+/g, ' ').trim();
   }
-  const junk = s => !s || /^[\d\s/.\-–|·]+$/.test(s) || s.length < 2;
+  const junk = s => !s || /^[\d\s/.\-–|·]+$/.test(s) || s.length < 2 || onlyFormula(s);
 
   // 제목처럼 보이는 줄
   const NUMBERED = /^(제\s*\d+\s*[장절과편부]|\d{1,2}(\.\d{1,2}){0,3}[.)]?\s|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.)]?\s|[IVX]{1,4}\.\s|[가-하][.)]\s|#{1,4}\s|\[[^\]]{2,30}\]$|【[^】]{2,30}】$|<[^>]{2,30}>$)/;
@@ -337,5 +347,7 @@ const Extract = (() => {
     }
     return { id: U.uid('m'), name, kind, addedAt: Date.now(), sections, chars };
   }
-  return { file, text, sectionize };
+  // 이미 저장된 자료에도 쓰는 정리 함수 (보여줄 때·문제 만들 때)
+  function tidy(line) { const t = cleanLine(line); return junk(t) ? '' : t; }
+  return { file, text, sectionize, tidy };
 })();

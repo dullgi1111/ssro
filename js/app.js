@@ -30,6 +30,7 @@ const rnd = n => Math.floor(Math.random() * n);
 function route() { return (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean).map(decodeURIComponent); }
 function go(h) { if (location.hash === h) render(); else location.hash = h; }
 function toast(msg) {
+  msg = I18N.str(String(msg));
   let t = document.querySelector('.toast');
   if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
   t.textContent = msg; t.hidden = false;
@@ -141,7 +142,7 @@ function topBar(crumb) {
   const home = !location.hash || location.hash === '#/' || location.hash === '#/login';
   return `<header class="bar"><div class="wrap">
     ${home ? '' : '<button class="btn back" data-act="back" aria-label="이전 화면으로">←</button>'}
-    <button class="logo" data-act="go" data-to="${p ? '#/' : '#/login'}" aria-label="스스로 홈"><img class="logo-img" src="icons/icon-64.png" alt=""><span class="logo-t">스스로</span></button>
+    <button class="logo" data-act="go" data-to="${p ? '#/' : '#/login'}" aria-label="스스로 홈"><img class="logo-img" src="icons/icon-64.png" alt=""><span class="logo-t" data-notr>스스로</span></button>
     <div class="crumb">${crumb}</div>
     ${p ? (() => { const lv = XP.level(), tot = XP.get().total; return `<div class="hud" aria-label="오늘의 학습 현황">
       <span class="hud-i twr" title="공부 탑: 연속으로 공부한 날만큼 층이 올라가요">🧱<b>${Prog.streak()}</b><small>층</small></span>
@@ -149,7 +150,9 @@ function topBar(crumb) {
       <span class="hud-i lv" title="레벨과 다음 레벨까지 경험치"><span>Lv.<b>${lv.lv}</b></span>
         <span class="hud-exp"><span class="hud-bar"><i style="width:${lv.pct}%"></i></span><small><b>${tot - lv.from}</b>/${lv.to - lv.from} XP</small></span></span></div>`; })() : ''}
     <button class="btn" data-act="themeToggle" aria-expanded="${App.ui.themeOpen}" aria-label="테마">🎨</button>
-    ${p ? `<button class="btn me" data-act="go" data-to="#/profile" aria-label="내 프로필">${avatar(p, 'sm')}<span class="hide-sm">${esc(p.name)}</span></button>` : ''}
+    <button class="btn" data-act="openGuide" aria-label="사용 설명서" title="사용 설명서">📖</button>
+    <button class="btn" data-act="go" data-to="#/settings" aria-label="설정" title="설정">⚙️</button>
+    ${p ? `<button class="btn me" data-act="go" data-to="#/profile" aria-label="내 프로필">${avatar(p, 'sm')}<span class="hide-sm" data-notr>${esc(p.name)}</span></button>` : ''}
   </div>${App.ui.themeOpen ? themePop() : ''}</header>`;
 }
 
@@ -163,12 +166,47 @@ function render() {
   }
   if (out.redirect) { history.replaceState(null, '', out.redirect); lastHash = location.hash; return render(); }
   App.ctx = out.ctx || null;
-  $app.innerHTML = (out.bar ?? topBar(out.crumb || '')) + `<main>${out.body}</main>` + (out.overlay || '') + (out.overlay ? '' : resumeFab());
+  $app.innerHTML = (out.bar ?? topBar(out.crumb || '')) + `<main>${out.body}</main>` + (out.overlay || '') + (out.overlay ? '' : resumeFab()) + guideBook();
+  I18N.apply($app);
   if (out.after) out.after();
   Session.save();
 }
 
+/* ---------- 사용 설명서: 책처럼 한 장씩 넘기는 창 ---------- */
+function guideBook() {
+  if (App.ui.guide == null) return '';
+  const pages = GUIDE[I18N.lang] || GUIDE.ko, ui = GUIDE_UI[I18N.lang] || GUIDE_UI.ko;
+  const i = U.clamp(App.ui.guide, 0, pages.length - 1), [ico, title, body] = pages[i], last = i === pages.length - 1;
+  return `<div class="overlay guide-ov" data-act="guideClose" data-notr>
+    <div class="book" role="dialog" aria-modal="true" aria-label="${ui.title}">
+      <div class="book-top"><span class="hint">${ui.title}</span><button class="book-x" data-act="guideClose" aria-label="${ui.close}">✕</button></div>
+      <div class="book-page" data-swipe="guide"><div class="book-ico">${ico}</div><h2>${esc(title)}</h2><p>${esc(body).replace(/\n/g, '<br>')}</p></div>
+      <div class="book-dots">${pages.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="book-nav"><button class="btn" data-act="guidePrev" ${i === 0 ? 'disabled' : ''}>${ui.prev}</button>
+        <span class="mono hint">${i + 1} / ${pages.length}</span>
+        <button class="btn primary" data-act="${last ? 'guideDone' : 'guideNext'}">${last ? ui.done : ui.next}</button></div>
+    </div></div>`;
+}
+
+/* ---------- 설정: 글자 크기 · 언어 ---------- */
+function vSettings() {
+  const fs = LS.get('fontSize', 'm');
+  const FS_LABEL = { s: '작게', m: '보통', l: '크게', xl: '아주 크게' };
+  return {
+    crumb: '설정',
+    body: `<div class="page wrap" style="max-width:720px"><h1 style="font-size:24px">설정</h1>
+      <section class="panel stack"><h2>글자 크기</h2>
+        <div class="seg">${FONT_SIZES.map(([k]) => `<button data-act="setFont" data-v="${k}" aria-pressed="${fs === k}">${FS_LABEL[k]}</button>`).join('')}</div>
+        <p class="hint sample-text" style="margin:0">가나다라 ABC 123</p></section>
+      <section class="panel stack"><h2>언어</h2>
+        <div class="seg" data-notr>${LANGS.map(([k, l]) => `<button data-act="setLang" data-v="${k}" aria-pressed="${I18N.lang === k}">${l}</button>`).join('')}</div></section>
+      <section class="panel row between"><div><b>사용 설명서</b></div><button class="btn" data-act="openGuide">📖</button></section>
+    </div>`,
+  };
+}
+
 function dispatch(r) {
+  if (r[0] === 'settings') return vSettings();
   if (r[0] === 'login') return r[1] === 'new' ? vProfileForm(null) : vLogin();
   if (!Profiles.cur) return { redirect: '#/login' };
   if (r[0] === 'profile') return r[1] === 'edit' ? vProfileForm(Profiles.cur) : vProfile();
@@ -202,7 +240,7 @@ function dispatch(r) {
   }
   return vHome();
 }
-const crumbOf = (s, ...rest) => [esc(s.name), ...rest].join(' › ');
+const crumbOf = (s, ...rest) => ['<span data-notr>' + esc(s.name) + '</span>', ...rest].join(' › ');
 
 /* ================= 프로필 · 로그인 ================= */
 function vLogin() {
@@ -219,7 +257,7 @@ function vLogin() {
       <section class="hero login-hero"><img class="hero-logo" src="icons/logo.png" alt="스스로 SSRO 로고"><h1>${list.length ? '누가 공부하나요?' : '스스로에 오신 걸 환영해요'}</h1>
         <p>${list.length ? '프로필을 골라 로그인하세요. 프로필마다 과목과 학습 기록이 따로 저장돼요.' : '강의자료만 올리면 개념 정리부터 문제·시험까지 자동으로 만들어 주는 자기주도학습 앱이에요. 먼저 프로필을 만들어 주세요.'}</p></section>
       ${list.length ? `<div class="pgrid">${list.map(p => `<button class="pcard" data-act="pickProfile" data-id="${esc(p.id)}">${avatar(p, 'lg')}
-          <b>${esc(p.name)}</b><span class="hint">${esc([p.school, p.major].filter(Boolean).join(' · ') || '　')}</span>${p.pin ? '<span class="chip">🔒 PIN</span>' : ''}</button>`).join('')}
+          <b data-notr>${esc(p.name)}</b><span class="hint" data-notr>${esc([p.school, p.major].filter(Boolean).join(' · ') || '　')}</span>${p.pin ? '<span class="chip">🔒 PIN</span>' : ''}</button>`).join('')}
         <button class="pcard add" data-act="go" data-to="#/login/new"><span class="av lg plus">＋</span><b>새 프로필</b><span class="hint">　</span></button></div>`
         : `<div><button class="btn primary" data-act="go" data-to="#/login/new">프로필 만들기</button></div>`}
       <div class="panel row between"><div><b>다른 기기에서 쓰던 기록이 있나요?</b><br><span class="hint">프로필 화면에서 내보낸 백업 파일을 불러오면 과목·자료·기록이 그대로 옮겨져요.</span></div>
@@ -278,9 +316,9 @@ function vProfile() {
     crumb: '내 프로필',
     body: `<div class="page wrap" style="max-width:900px">
       <section class="panel prof">${avatar(p, 'xl')}<div class="stack" style="gap:4px">
-          <h1 style="font-size:26px">${esc(p.name)}</h1>
+          <h1 style="font-size:26px" data-notr>${esc(p.name)}</h1>
           <div class="muted">${esc([p.school, p.major, p.grade].filter(Boolean).join(' · ') || '학교·학과를 등록해 보세요')}</div>
-          ${p.motto ? `<div class="motto">“${esc(p.motto)}”</div>` : ''}
+          ${p.motto ? `<div class="motto" data-notr>“${esc(p.motto)}”</div>` : ''}
           <div class="row" style="margin-top:6px"><button class="btn sm" data-act="go" data-to="#/profile/edit">정보 수정</button>
             <span class="chip twr">🧱 공부 탑 ${Prog.streak()}층</span><span class="chip">가입 ${U.day(p.createdAt)}</span></div></div></section>
       ${towerCard()}
@@ -315,8 +353,8 @@ function vHome() {
   return {
     crumb: '',
     body: `<div class="page wrap">
-      <section class="hero"><h1>${esc(p.name)}님, 오늘도 스스로!</h1>
-        <p>${p.motto ? '“' + esc(p.motto) + '”' : '강의자료만 올리면 개념 정리부터 문제·시험까지 자동으로 만들어져요.'}</p></section>
+      <section class="hero"><h1><span data-notr>${esc(p.name)}</span>님, 오늘도 스스로!</h1>
+        <p>${p.motto ? '<span data-notr>“' + esc(p.motto) + '”</span>' : '강의자료만 올리면 개념 정리부터 문제·시험까지 자동으로 만들어져요.'}</p></section>
       <div class="gate">
         <button class="gate-btn main" data-act="go" data-to="#/study"><span class="ico">📚</span><b>공부하기</b>
           <span>과목 ${subs.length}개 · 개념 정리 · 문제 생성 · 기록 보기</span></button>
@@ -325,7 +363,7 @@ function vHome() {
       </div>
       ${!subs.length ? `<div class="panel row between"><div><b>아직 과목이 없어요</b><br><span class="hint">과목 이름을 정하고 강의자료를 올리면 바로 공부를 시작할 수 있어요.</span></div>
         <button class="btn primary" data-act="go" data-to="#/manage/new">첫 과목 만들기 →</button></div>` : ''}
-      ${last ? `<div class="panel row between"><div><div class="label">이어서 공부하기</div><b>${esc(last.s.name)}</b><span class="hint"> · 마지막 학습 ${U.date(last.t)}</span></div>
+      ${last ? `<div class="panel row between"><div><div class="label">이어서 공부하기</div><b data-notr>${esc(last.s.name)}</b><span class="hint"> · 마지막 학습 ${U.date(last.t)}</span></div>
         <button class="btn primary" data-act="go" data-to="${L('s', last.s.id)}">계속하기 →</button></div>` : ''}
       <div class="home-duo">${goalCard()}${towerCard()}</div>
       <div class="stats">${stat('🧱 ' + Prog.streak() + '층', '공부 탑')}${stat(seen, '푼 문제')}${stat(seen ? U.pct(ok, seen) + '%' : '–', '정답률')}${stat(wrong, '다시 볼 오답')}</div>
@@ -364,7 +402,7 @@ function goalCard() {
 function subjCard(s) {
   const st = Prog.subjStat(s), weak = Prog.weakUnits(s, 1)[0];
   return `<button class="scard" data-act="go" data-to="${L('s', s.id)}">
-    <h3>${esc(s.name)}</h3>${s.desc ? `<p class="hint">${esc(s.desc)}</p>` : ''}
+    <h3 data-notr>${esc(s.name)}</h3>${s.desc ? `<p class="hint" data-notr>${esc(s.desc)}</p>` : ''}
     <div class="meta"><span class="chip">자료 ${s.materials.length}</span><span class="chip">학습 완료 ${st.learned}/${st.units}</span>${st.exams ? `<span class="chip">시험 ${st.exams}회</span>` : ''}</div>
     <div class="prog"><i class="g" style="width:${U.pct(st.ok, Math.max(st.seen, 1))}%"></i><i class="r" style="width:${U.pct(st.wrong, Math.max(st.seen, 1))}%"></i></div>
     <div class="kv"><span>푼 문제 ${st.seen}</span><span>정답률 ${st.acc == null ? '–' : Math.round(st.acc * 100) + '%'}</span></div>
@@ -384,7 +422,7 @@ function vStudy() {
 function subjHead(s, tab) {
   const t = (id, l) => `<button data-act="go" data-to="${L('s', s.id, id)}" aria-current="${tab === id ? 'page' : 'false'}">${l}</button>`;
   return `<div class="subj-head"><div class="row between"><div class="stack" style="gap:2px"><button class="btn ghost sm" style="justify-self:start" data-act="go" data-to="#/study">← 과목 목록</button>
-      <h1>${esc(s.name)}</h1></div><button class="btn sm" data-act="go" data-to="${L('manage', 'edit', s.id)}">자료 추가·수정</button></div>
+      <h1 data-notr>${esc(s.name)}</h1></div><button class="btn sm" data-act="go" data-to="${L('manage', 'edit', s.id)}">자료 추가·수정</button></div>
     <nav class="tabs" aria-label="과목 메뉴">${t('concept', '📖 개념 정리')}${t('gen', '✏️ 문제 생성')}${t('log', '📊 기록 보기')}</nav></div>`;
 }
 function vNoMaterial(s) {
@@ -415,7 +453,7 @@ function unitPath(s, p) {
     return `<div class="node-row" style="--off:${OFF[i % 8]}">
       ${st === 'cur' ? '<div class="bubble">시작!</div>' : ''}
       <button class="node ${st} ${weak.has(m.id) ? 'weak' : ''}" data-act="go" data-to="${L('s', s.id, 'concept', m.id)}" aria-label="단원 ${i + 1} ${esc(m.name)}">${st === 'done' ? '✓' : i + 1}</button>
-      <div class="node-label"><b>${esc(m.name)}</b><small>${us.acc == null ? `개념 카드 ${m.sections.length}장` : `정답률 ${Math.round(us.acc * 100)}%${weak.has(m.id) ? ' · 약점' : ''}`}</small></div></div>`;
+      <div class="node-label"><b data-notr>${esc(m.name)}</b><small>${us.acc == null ? `개념 카드 ${m.sections.length}장` : `정답률 ${Math.round(us.acc * 100)}%${weak.has(m.id) ? ' · 약점' : ''}`}</small></div></div>`;
   }).join('');
   const allDone = s.materials.every(m => p.learned[m.id]);
   return `<div class="path-intro"><b>단원 ${s.materials.length}개 중 ${s.materials.filter(m => p.learned[m.id]).length}개 완료</b>
@@ -436,17 +474,18 @@ function vConceptUnit(s, uid) {
     crumb: crumbOf(s, '개념 정리'),
     body: `<div class="page wrap">${subjHead(s, 'concept')}<div class="learn">
       <nav class="toc" aria-label="단원 목록">${s.materials.map((x, j) => `<button data-act="go" data-to="${L('s', s.id, 'concept', x.id)}" aria-current="${x.id === m.id}">
-        <span class="n">${String(j + 1).padStart(2, '0')}</span><span>${esc(x.name)}</span><span class="ck">${p.learned[x.id] ? '✓' : ''}</span></button>`).join('')}</nav>
+        <span class="n">${String(j + 1).padStart(2, '0')}</span><span data-notr>${esc(x.name)}</span><span class="ck">${p.learned[x.id] ? '✓' : ''}</span></button>`).join('')}</nav>
       <div class="stack">
-        <select class="input only-sm" data-ch="conceptUnit" data-sid="${esc(s.id)}" aria-label="단원 고르기">${s.materials.map((x, j) => `<option value="${esc(x.id)}" ${x.id === m.id ? 'selected' : ''}>${j + 1}. ${esc(x.name)}${p.learned[x.id] ? ' ✓' : ''}</option>`).join('')}</select>
+        <select data-notr class="input only-sm" data-ch="conceptUnit" data-sid="${esc(s.id)}" aria-label="단원 고르기">${s.materials.map((x, j) => `<option value="${esc(x.id)}" ${x.id === m.id ? 'selected' : ''}>${j + 1}. ${esc(x.name)}${p.learned[x.id] ? ' ✓' : ''}</option>`).join('')}</select>
         <div class="stack" style="gap:6px"><div class="row" style="gap:6px"><span class="chip acc">단원 ${i + 1}</span><span class="chip">${KIND[m.kind] || m.kind}</span><span class="chip">개념 카드 ${m.sections.length}</span><span class="chip">문장 ${info.facts}</span></div>
-          <h1 style="font-size:clamp(21px,3.4vw,27px)">${esc(m.name)}</h1></div>
+          <h1 style="font-size:clamp(21px,3.4vw,27px)" data-notr>${esc(m.name)}</h1></div>
         <div class="drillbox"><div><b>✏️ 이 단원 개념 문제 풀기</b><br><span class="hint">이 단원 자료에서 랜덤으로 10~20문항을 만들어 바로 채점·해설해요.</span></div>
           <button class="btn primary" data-act="go" data-to="${L('s', s.id, 'drill', m.id)}">문제 풀기 →</button></div>
         ${info.top.length ? `<div class="card"><h3>핵심 용어</h3><div class="row" style="gap:6px">${info.top.map(t => `<span class="chip acc">${esc(t)}</span>`).join('')}</div></div>` : ''}
         ${info.defs.length ? `<div class="memo"><span class="h">용어 정리</span><ul>${info.defs.slice(0, 15).map(d => `<li><b>${esc(d.term)}</b> — ${esc(d.desc)}</li>`).join('')}</ul></div>` : ''}
-        ${m.sections.slice(0, lim).map(sec => `<article class="card"><h3>${label(sec)}</h3>
-          ${sec.lines.length ? `<ul>${sec.lines.map(l => `<li>${Gen.highlight(info.A, l)}</li>`).join('')}</ul>` : '<p class="hint">(제목만 있는 쪽)</p>'}</article>`).join('')}
+        ${m.sections.slice(0, lim).map(sec0 => { const sec = { ...sec0, title: Extract.tidy(sec0.title), lines: sec0.lines.map(Extract.tidy).filter(Boolean) };
+          return `<article class="card" data-notr><h3>${label(sec)}</h3>
+          ${sec.lines.length ? `<ul>${sec.lines.map(l => `<li>${Gen.highlight(info.A, l).replace(/\[수식\]/g, '<span class="eqmark" title="' + I18N.str('원본의 수식은 앱에서 표시할 수 없어요') + '">' + I18N.str('수식') + '</span>')}</li>`).join('')}</ul>` : '<p class="hint">(제목만 있는 쪽)</p>'}</article>`; }).join('')}
         ${m.sections.length > lim ? `<button class="btn" data-act="moreCards" data-k="${esc(m.id)}">카드 더 보기 (${m.sections.length - lim}장 남음)</button>` : ''}
         <div class="row">
           <button class="btn ${p.learned[m.id] ? '' : 'primary'}" data-act="learned" data-sid="${esc(s.id)}" data-uid="${esc(m.id)}">${p.learned[m.id] ? '✓ 학습 완료됨 (취소)' : '이 단원 학습 완료'}</button>
@@ -463,7 +502,7 @@ function initResp(q) { return q.type === 'blank' ? [] : q.type === 'short' ? '' 
 function qHead(s, q, no) {
   const u = s.uById[q.unit];
   return `<div class="qhead"><span class="qno">${no}.</span><span class="chip">${TYPES[q.type]}</span><span class="chip d${q.diff}">${DIFF[q.diff]}</span>
-    ${u ? `<span class="chip">${esc(u.title)}</span>` : ''}${q.src ? `<span class="chip">${esc(q.src.length > 30 ? q.src.slice(0, 29) + '…' : q.src)}</span>` : ''}</div>`;
+    ${u ? `<span class="chip" data-notr>${esc(u.title)}</span>` : ''}${q.src ? `<span class="chip" data-notr>${esc(q.src.length > 30 ? q.src.slice(0, 29) + '…' : q.src)}</span>` : ''}</div>`;
 }
 // mode: 'study'(바로 채점) · 'exam'(채점 안 보임) · 'review'(읽기 전용 + 채점 표시)
 function qBody(q, st, mode) {
@@ -475,7 +514,7 @@ function qBody(q, st, mode) {
       const picked = st.resp === i, isA = q.answer === i;
       let cls = 'opt';
       if (fb) { if (isA) cls += ' ok'; else if (picked) cls += ' bad'; }
-      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-pressed="${!fb && picked}" ${lock ? 'disabled' : ''}><span class="mk">${i + 1}</span><span>${o}</span></button>`;
+      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-pressed="${!fb && picked}" ${lock ? 'disabled' : ''}><span class="mk">${i + 1}</span><span data-notr>${o}</span></button>`;
     }).join('')}</div>`;
   }
   if (q.type === 'ox') {
@@ -504,7 +543,7 @@ function judgeBox(q, j, self, act) {
   return `<div class="ai-judge"><div class="t">자동 채점 기준 판정</div>
     <div class="v">${vt} <span class="hint">· 채점 포인트 ${hits}/${j.items.length} 충족</span></div>
     ${j.items.length ? `<ul class="rubric">${j.items.map(r => `<li class="${r.hit ? 'hit' : 'miss'}"><b>${r.hit ? '✓' : '✗'}</b>
-      <div>${esc(r.point)}<div class="kw">핵심어: ${esc(r.keywords.join('|').split('|').map(x => x.trim()).join(' / '))}</div></div><span class="mono">${fmt(r.pts)}점</span></li>`).join('')}</ul>`
+      <div><span data-notr>${esc(r.point)}</span><div class="kw">핵심어: <span data-notr>${esc(r.keywords.join('|').split('|').map(x => x.trim()).join(' / '))}</span></div></div><span class="mono">${fmt(r.pts)}점</span></li>`).join('')}</ul>`
       : '<p class="hint">이 문제에는 채점 기준이 없어요. 모범답안과 비교해 직접 채점하세요.</p>'}
     ${act ? `<div class="label" style="margin:4px 0 0">내 최종 채점 (판정을 보고 직접 고르세요)</div>
       <div class="self">${[[1, '맞음'], [0.5, '부분'], [0, '틀림']].map(([v, l]) => `<button data-act="${act}" data-v="${v}" data-q="${esc(q.id)}" aria-pressed="${self === v}">${l}${j.verdict === v ? ' · 자동 판정' : ''}</button>`).join('')}</div>`
@@ -515,12 +554,12 @@ function explainHTML(q, st, o = {}) {
   let h = '';
   if (q.type === 'short') {
     h += judgeBox(q, st.judge || Grade.judgeShort(q, st.resp), st.self, o.selfAct);
-    h += `<div class="model"><b class="label" style="display:block">모범답안 (자료 내용)</b>${q.model}</div>`;
+    h += `<div class="model"><b class="label" style="display:block">모범답안 (자료 내용)</b><span data-notr>${q.model}</span></div>`;
   }
   if (q.type === 'mc') {
     h += `<ul class="xlist">${q.options.map((op, i) => {
       const isA = q.answer === i, me = st.resp === i, note = (q.optionNotes || [])[i];
-      return `<li class="${isA ? 'is-a' : me ? 'is-me' : ''}"><div class="xh"><b class="mono">${i + 1}</b><span>${op}</span>
+      return `<li class="${isA ? 'is-a' : me ? 'is-me' : ''}"><div class="xh"><b class="mono">${i + 1}</b><span data-notr>${op}</span>
         ${isA ? '<span class="chip ok">정답</span>' : ''}${me && !isA ? '<span class="chip bad">내 선택</span>' : ''}</div>${note ? `<div class="xw">${note}</div>` : ''}</li>`;
     }).join('')}</ul>`;
   }
@@ -538,7 +577,7 @@ function verdictLine(q, st) {
 }
 function answerText(q) {
   if (q.type === 'mc') return U.plain(q.options[q.answer]);
-  if (q.type === 'ox') return q.answer ? 'O (맞다)' : 'X (틀리다)';
+  if (q.type === 'ox') return I18N.str(q.answer ? 'O (맞다)' : 'X (틀리다)');
   if (q.type === 'blank') return q.blanks.map((a, i) => (q.blanks.length > 1 ? CIRC[i] + ' ' : '') + a[0]).join(', ');
   return '모범답안을 확인해 보세요';
 }
@@ -550,7 +589,7 @@ function fbSheet(q, st, P) {
   return `<div class="fb-sheet ${cls}" role="status"><div class="wrap fb-in">
     <div class="fb-ico" aria-hidden="true">${v >= 1 ? '✓' : v > 0 ? '△' : '✕'}</div>
     <div class="fb-txt"><b>${esc(st.msg || '')}</b>${st.xp ? `<span class="xpchip">+${st.xp} XP</span>` : ''}${v >= 1 && st.combo >= 3 ? `<span class="combo">✨ ${st.combo}연속 정답!</span>` : ''}
-      ${v < 1 ? `<div class="fb-ans">정답: <b>${esc(answerText(q))}</b></div>` : ''}</div>
+      ${v < 1 ? `<div class="fb-ans">정답: <b data-notr>${esc(answerText(q))}</b></div>` : ''}</div>
     <button class="btn big ${cls === 'bad' ? 'bad-solid' : cls === 'part' ? 'part-solid' : 'primary'}" data-act="next" autofocus>${last ? '결과 보기' : '계속'}</button></div></div>`;
 }
 function vPlay(s, P, extra, crumb, tab) {
@@ -656,7 +695,7 @@ function vGen(s) {
             <button data-act="gopt" data-k="mode" data-v="exam" aria-pressed="${exam}"><b>시험 보기 (CBT)</b><span>시간 제한 · 제출 후 한꺼번에 채점</span></button></div></div>
         <div class="opt-group"><div class="t">범위 <span class="hint">${o.units.length ? o.units.length + '개 단원' : '전체 단원'} · 문장 ${cap}개</span></div>
           <div class="seg"><button data-act="gunit" data-v="" aria-pressed="${!o.units.length}">전체</button>
-          ${s.units.map((u, i) => `<button data-act="gunit" data-v="${esc(u.id)}" aria-pressed="${o.units.includes(u.id)}">${i + 1}. ${esc(u.title)}</button>`).join('')}</div></div>
+          ${s.units.map((u, i) => `<button data-act="gunit" data-v="${esc(u.id)}" aria-pressed="${o.units.includes(u.id)}">${i + 1}. <span data-notr>${esc(u.title)}</span></button>`).join('')}</div></div>
         <div class="opt-group"><div class="t">문제 수 <span class="mono">${o.count}문항</span></div>
           <div class="row">${seg('count', [[10, '10'], [20, '20'], [30, '30'], [40, '40'], [50, '50']])}
           <input type="number" class="input numin" min="1" max="100" value="${o.count}" data-ch="gCount" aria-label="문제 수 직접 입력"></div></div>
@@ -694,8 +733,8 @@ function vLog(s) {
       <div class="stats">${stat(st.seen, '푼 문제')}${stat(st.acc == null ? '–' : Math.round(st.acc * 100) + '%', '정답률')}${stat(st.learned + '/' + st.units, '학습 완료 단원')}${stat(st.exams, '시험 응시')}${stat(st.exams ? fmt(st.best) + '점' : '–', '최고 점수')}</div>
       <div class="setup"><section class="panel"><h2>단원별 정답률</h2>
           <div class="bars">${s.units.map(u => { const us = Prog.unitStat(s, u.id); const pc = us.acc == null ? 0 : Math.round(us.acc * 100);
-            return `<div class="b"><span>${p.learned[u.id] ? '✓ ' : ''}${esc(u.title)}</span><div class="prog"><i class="${pc >= 70 ? 'g' : 'r'}" style="width:${pc}%"></i></div><span class="mono">${us.acc == null ? '–' : pc + '%'}</span></div>`; }).join('')}</div>
-          ${weak.length ? `<p style="margin-top:12px"><span class="hint">약한 단원</span> ${weak.map(w => `<button class="chip bad" data-act="go" data-to="${L('s', s.id, 'concept', w.u.id)}">${esc(w.u.title)} ${Math.round(w.st.acc * 100)}%</button>`).join(' ')}</p>` : ''}</section>
+            return `<div class="b"><span>${p.learned[u.id] ? '✓ ' : ''}<span data-notr>${esc(u.title)}</span></span><div class="prog"><i class="${pc >= 70 ? 'g' : 'r'}" style="width:${pc}%"></i></div><span class="mono">${us.acc == null ? '–' : pc + '%'}</span></div>`; }).join('')}</div>
+          ${weak.length ? `<p style="margin-top:12px"><span class="hint">약한 단원</span> ${weak.map(w => `<button class="chip bad" data-act="go" data-to="${L('s', s.id, 'concept', w.u.id)}"><span data-notr>${esc(w.u.title)}</span> ${Math.round(w.st.acc * 100)}%</button>`).join(' ')}</p>` : ''}</section>
         <section class="panel stack"><h2>다시 볼 오답 ${wrong.length}문항</h2>
           ${wrong.length ? `<button class="btn primary" data-act="wrongOnly" data-sid="${esc(s.id)}">오답만 다시 풀기</button>
             <ul class="wlist">${wrong.slice(0, 8).map(r => `<li><span class="chip">${TYPES[r.ty] || ''}</span><span>${esc(U.plain(r.snap.q).slice(0, 70))}</span></li>`).join('')}</ul>
@@ -742,7 +781,7 @@ function vExamRun(s, E) {
       <div class="row end"><button class="btn" data-act="dlgCancel">계속 풀기</button><button class="btn primary" data-act="submit">제출하기</button></div></div></div>` : '';
   return {
     ctx: 'exam',
-    bar: `<header class="bar"><div class="wrap"><button class="btn back" data-act="back" aria-label="잠시 나가기 (시간 멈춤)" title="잠시 나가기 · 시간이 멈춰요">←</button><span class="crumb">📝 ${esc(s.name)} · 시험 ${E.idx + 1}/${n}</span>
+    bar: `<header class="bar"><div class="wrap"><button class="btn back" data-act="back" aria-label="잠시 나가기 (시간 멈춤)" title="잠시 나가기 · 시간이 멈춰요">←</button><span class="crumb">📝 <span data-notr>${esc(s.name)}</span> · 시험 ${E.idx + 1}/${n}</span>
       <span class="timer ${ti.low ? 'low' : ''}" id="timer" aria-label="남은 시간">${ti.text}</span>
       <button class="btn" data-act="sheetToggle">표기란</button><button class="btn go" data-act="submitAsk">제출</button></div></header>`,
     body: `<div class="page wrap"><div class="pbar"><i style="width:${(n - unanswered) / n * 100}%"></i></div>
@@ -796,9 +835,9 @@ function vExamGrade(s, E) {
       ${shorts.map(([q, i]) => {
         const r = E.resp[i];
         return `<section class="panel stack" style="gap:12px">${qHead(s, q, i + 1)}<div class="stem">${q.q}</div>
-          <div><div class="label">내 답안</div><div class="mine">${Grade.answered(q, r) ? esc(r) : '<span class="hint">(답을 쓰지 않았어요)</span>'}</div></div>
+          <div><div class="label">내 답안</div><div class="mine">${Grade.answered(q, r) ? '<span data-notr>' + esc(r) + '</span>' : '<span class="hint">(답을 쓰지 않았어요)</span>'}</div></div>
           ${judgeBox(q, E.judge[i], E.self[i], 'eself').replace(/data-q="[^"]*"/g, `data-i="${i}"`)}
-          <div class="model"><b class="label" style="display:block">모범답안 (자료 내용)</b>${q.model}</div></section>`;
+          <div class="model"><b class="label" style="display:block">모범답안 (자료 내용)</b><span data-notr>${q.model}</span></div></section>`;
       }).join('')}
       <div class="row end"><span class="hint">${left ? `${left}문항 남음` : '모두 확정했어요'}</span>
         <button class="btn primary" data-act="gradeDone" ${left ? 'disabled' : ''}>채점 확정하고 결과 보기</button></div></div>`,
@@ -837,7 +876,7 @@ function vExamResult(s, E) {
       <section class="panel score"><div class="big">${fmt(R.score)}<small> / 100</small></div>
         <div class="stack" style="gap:10px"><b style="font-size:18px">${msg}</b>
           <div class="parts"><div>획득 XP<b>⚡ ${R.xp || 0}</b></div><div>맞음<b>${R.ok}</b></div><div>부분<b>${R.part}</b></div><div>틀림<b>${R.bad}</b></div><div>안 푼 문제<b>${R.blank}</b></div><div>걸린 시간<b>${U.mmss(R.used)}</b></div></div></div></section>
-      <div class="setup"><section class="panel"><h2>단원별 정답률</h2><div class="bars">${units.map(x => `<div class="b"><span>${esc(x.u.title)}</span>
+      <div class="setup"><section class="panel"><h2>단원별 정답률</h2><div class="bars">${units.map(x => `<div class="b"><span data-notr>${esc(x.u.title)}</span>
           <div class="prog"><i class="${x.r.pct >= 70 ? 'g' : 'r'}" style="width:${x.r.pct}%"></i></div><span class="mono">${x.r.pct}%</span></div>`).join('')}</div></section>
         <section class="panel stack"><h2>유형별</h2>
           <table class="summary-tbl">${objR ? `<tr><th>객관식 (${objR.t})</th><td class="mono">${objR.pct}%</td></tr>` : ''}${subR ? `<tr><th>주관식 (${subR.t})</th><td class="mono">${subR.pct}%</td></tr>` : ''}</table>
@@ -864,8 +903,8 @@ function vManage() {
     body: `<div class="page wrap"><div class="row between"><h1 style="font-size:24px">과목 추가·수정</h1>
         <button class="btn primary" data-act="go" data-to="#/manage/new">＋ 새 과목 추가</button></div>
       <p class="muted" style="margin:0">과목을 만들고 강의자료를 올려 두면, [공부하기]에서 개념 정리와 문제가 자동으로 만들어져요.</p>
-      <div class="mlist">${Lib.list.map(s => `<div class="mitem"><div class="stack" style="gap:4px"><h3>${esc(s.name)}</h3>
-          <div class="row" style="gap:6px"><span class="chip">자료 ${s.materials.length}</span>${s.materials.slice(0, 4).map(m => `<span class="chip">${KIND[m.kind] || ''} · ${esc(m.name.length > 16 ? m.name.slice(0, 15) + '…' : m.name)}</span>`).join('')}${s.materials.length > 4 ? '<span class="chip">…</span>' : ''}</div></div>
+      <div class="mlist">${Lib.list.map(s => `<div class="mitem"><div class="stack" style="gap:4px"><h3 data-notr>${esc(s.name)}</h3>
+          <div class="row" style="gap:6px"><span class="chip">자료 ${s.materials.length}</span>${s.materials.slice(0, 4).map(m => `<span class="chip" data-notr>${KIND[m.kind] || ''} · ${esc(m.name.length > 16 ? m.name.slice(0, 15) + '…' : m.name)}</span>`).join('')}${s.materials.length > 4 ? '<span class="chip">…</span>' : ''}</div></div>
           <div class="row"><button class="btn sm" data-act="go" data-to="${L('manage', 'edit', s.id)}">자료 추가·수정</button>
             <button class="btn sm" data-act="go" data-to="${L('s', s.id)}">공부하기</button></div></div>`).join('')
         || '<div class="empty">아직 과목이 없어요. [＋ 새 과목 추가]로 시작해 보세요.</div>'}</div>
@@ -884,7 +923,7 @@ function uploader(target) {
       <textarea class="input" rows="8" placeholder="필기나 정리한 글을 붙여넣으세요. '1. 제목', '■ 제목' 같은 줄은 자동으로 소제목이 돼요." data-in="up" data-k="paste">${esc(U2.paste)}</textarea>
       <div class="row end"><button class="btn primary" data-act="addPaste" data-target="${esc(target)}">자료로 추가</button></div></div>` : ''}
     ${U2.items.length ? `<ul class="uplist">${U2.items.map(it => `<li class="${it.status}"><span>${it.status === 'reading' ? '⏳' : it.status === 'done' ? '✅' : '⚠️'}</span>
-      <div><b>${esc(it.name)}</b><div class="hint">${it.status === 'reading' ? '글자를 읽는 중…' : it.status === 'done' ? `${KIND[it.kind] || ''} · 개념 카드 ${it.secs}장 · 글자 ${it.chars.toLocaleString()}자` : esc(it.msg)}</div></div></li>`).join('')}</ul>` : ''}`;
+      <div><b data-notr>${esc(it.name)}</b><div class="hint">${it.status === 'reading' ? '글자를 읽는 중…' : it.status === 'done' ? `${KIND[it.kind] || ''} · 개념 카드 ${it.secs}장 · 글자 ${it.chars.toLocaleString()}자` : esc(it.msg)}</div></div></li>`).join('')}</ul>` : ''}`;
 }
 function vSubjNew() {
   const N = App.ui.newSubj || (App.ui.newSubj = { name: '', desc: '', mats: [] });
@@ -898,7 +937,7 @@ function vSubjNew() {
           <label class="field"><span class="label">한 줄 소개 (선택)</span><input type="text" value="${esc(N.desc)}" placeholder="예: 중간고사 범위 1~7주차" data-in="ns" data-k="desc" maxlength="60"></label></section>
         <section class="stepbox"><h2>자료 올리기</h2>${uploader('new')}
           ${N.mats.length ? `<div class="label">추가된 자료 ${N.mats.length}개 (자료 하나 = 단원 하나)</div>
-            <ul class="uplist">${N.mats.map((m, i) => `<li class="done"><span>${i + 1}</span><div><b>${esc(m.name)}</b><div class="hint">${KIND[m.kind]} · 개념 카드 ${m.sections.length}장</div></div>
+            <ul class="uplist">${N.mats.map((m, i) => `<li class="done"><span>${i + 1}</span><div><b data-notr>${esc(m.name)}</b><div class="hint">${KIND[m.kind]} · 개념 카드 ${m.sections.length}장</div></div>
               <button class="btn sm ghost" data-act="nsDel" data-i="${i}">빼기</button></li>`).join('')}</ul>` : ''}</section>
       </div>
       <div class="row end"><button class="btn" data-act="go" data-to="#/manage">취소</button>
@@ -908,16 +947,16 @@ function vSubjNew() {
 function vSubjEdit(s) {
   const p = Prog.of(s.id);
   return {
-    crumb: '과목 추가·수정 › ' + esc(s.name),
+    crumb: '과목 추가·수정 › <span data-notr>' + esc(s.name) + '</span>',
     body: `<div class="page wrap" style="max-width:900px">
-      <div class="row between"><h1 style="font-size:24px">${esc(s.name)}</h1><button class="btn sm" data-act="go" data-to="${L('s', s.id)}">공부하기 →</button></div>
+      <div class="row between"><h1 style="font-size:24px" data-notr>${esc(s.name)}</h1><button class="btn sm" data-act="go" data-to="${L('s', s.id)}">공부하기 →</button></div>
       <section class="panel stack"><h2>기본 정보</h2>
         <label class="field"><span class="label">과목 이름</span><input type="text" id="edName" value="${esc(s.name)}" maxlength="40"></label>
         <label class="field"><span class="label">한 줄 소개</span><input type="text" id="edDesc" value="${esc(s.desc || '')}" maxlength="60"></label>
         <div class="row end"><button class="btn primary" data-act="edMeta" data-sid="${esc(s.id)}">저장</button></div></section>
       <section class="panel stack"><h2>자료 (${s.materials.length})</h2>
         <p class="hint" style="margin:0">자료 하나가 단원 하나예요. 이름을 바꾸면 단원 이름도 바뀌어요.</p>
-        ${s.materials.map((m, i) => `<details class="unit-ed"><summary><b>${i + 1}.</b> <span>${esc(m.name)}</span><span class="chip">${KIND[m.kind] || m.kind}</span><span class="chip">카드 ${m.sections.length}</span>${p.learned[m.id] ? '<span class="chip ok">학습 완료</span>' : ''}</summary>
+        ${s.materials.map((m, i) => `<details class="unit-ed"><summary><b>${i + 1}.</b> <span data-notr>${esc(m.name)}</span><span class="chip">${KIND[m.kind] || m.kind}</span><span class="chip">카드 ${m.sections.length}</span>${p.learned[m.id] ? '<span class="chip ok">학습 완료</span>' : ''}</summary>
           <div class="body"><div class="row"><input type="text" class="input" style="flex:1 1 240px" value="${esc(m.name)}" data-ch="matName" data-sid="${esc(s.id)}" data-mid="${esc(m.id)}" aria-label="자료 이름">
               <button class="btn sm" data-act="matUp" data-sid="${esc(s.id)}" data-mid="${esc(m.id)}" ${i === 0 ? 'disabled' : ''} aria-label="위로">↑</button>
               <button class="btn sm danger" data-act="matDel" data-sid="${esc(s.id)}" data-mid="${esc(m.id)}">자료 삭제</button></div>
@@ -1015,12 +1054,19 @@ function move(d) {
   else return;
   render(); window.scrollTo(0, 0);
 }
+function closeGuide() {
+  App.ui.guide = null;
+  if (Profiles.cur && !Profiles.cur.guideSeen) Profiles.update(Profiles.cur.id, { guideSeen: true });
+  render();
+}
+const ask = m => confirm(I18N.str(m));
 async function enterProfile(id) {
   Profiles.login(id);
   applyTheme(Profiles.cur.theme || 'calm', false);
   App.play = App.exam = null; App.ui.gen = App.ui.up = App.ui.newSubj = null;
   await Lib.load();
   Session.load();
+  if (!Profiles.cur.guideSeen) App.ui.guide = 0;   // 처음 로그인하면 설명서를 바로 보여줌
   go('#/');
 }
 
@@ -1067,6 +1113,15 @@ const ACT = {
       App.ui.pf = null; toast(`${p.name}님, 환영해요!`); enterProfile(p.id);
     }
   },
+  // 사용 설명서
+  openGuide() { App.ui.guide = 0; App.ui.themeOpen = false; render(); },
+  guideNext() { App.ui.guide++; render(); },
+  guidePrev() { App.ui.guide = Math.max(0, App.ui.guide - 1); render(); },
+  guideClose(el, e) { if (el.classList.contains('overlay') && e.target !== el) return; closeGuide(); },
+  guideDone() { closeGuide(); },
+  // 설정
+  setFont(el) { I18N.applyFont(el.dataset.v); render(); },
+  setLang(el) { I18N.setLang(el.dataset.v); render(); },
   pathExam(el) { const s = Lib.get(el.dataset.sid); const o = genOpts(s); o.mode = 'exam'; o.units = []; go(L('s', s.id, 'gen')); },
   setGoal(el) { Profiles.update(Profiles.cur.id, { goal: Number(el.dataset.v) }); toast(`하루 목표를 ${el.dataset.v} XP로 정했어요`); render(); },
   async backup() {
@@ -1075,13 +1130,13 @@ const ACT = {
   },
   back() { if (history.length > 1) history.back(); else go('#/'); },
   dropSession() {
-    if (!confirm('풀던 문제를 그만둘까요? 지금까지 푼 기록은 남아 있어요.')) return;
+    if (!ask('풀던 문제를 그만둘까요? 지금까지 푼 기록은 남아 있어요.')) return;
     stopTimer(); App.play = null; App.exam = null; Session.clear(); render();
   },
   logout() { pauseExam(); Session.save(); stopTimer(); Profiles.logout(); App.play = App.exam = null; Lib.list = []; Lib.map = {}; go('#/login'); },
   async profileDel() {
     const p = Profiles.cur;
-    if (!confirm(`「${p.name}」 프로필을 삭제할까요?\n이 프로필의 과목·자료·학습 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
+    if (!ask(`「${p.name}」 프로필을 삭제할까요?\n이 프로필의 과목·자료·학습 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
     await Profiles.remove(p.id); Lib.list = []; Lib.map = {}; toast('프로필을 삭제했어요'); go('#/login');
   },
   // 풀이
@@ -1183,7 +1238,7 @@ const ACT = {
   },
   matDel(el) {
     const s = Lib.get(el.dataset.sid), m = s.materials.find(x => x.id === el.dataset.mid);
-    if (!confirm(`「${m.name}」 자료를 삭제할까요?`)) return;
+    if (!ask(`「${m.name}」 자료를 삭제할까요?`)) return;
     mutateSubject(s.id, x => { x.materials = x.materials.filter(y => y.id !== m.id); }, '자료를 삭제했어요');
   },
   matUp(el) {
@@ -1195,12 +1250,12 @@ const ACT = {
     toast('과목 파일을 내려받았어요');
   },
   edResetProg(el) {
-    if (!confirm('이 과목의 학습 기록(푼 문제, 오답, 시험 기록, 학습 완료 표시)을 모두 지울까요?')) return;
+    if (!ask('이 과목의 학습 기록(푼 문제, 오답, 시험 기록, 학습 완료 표시)을 모두 지울까요?')) return;
     Prog.reset(el.dataset.sid); toast('학습 기록을 초기화했어요'); render();
   },
   async subjDel(el) {
     const s = Lib.get(el.dataset.sid);
-    if (!confirm(`「${s.name}」 과목을 삭제할까요? 자료와 학습 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
+    if (!ask(`「${s.name}」 과목을 삭제할까요? 자료와 학습 기록이 모두 지워지고 되돌릴 수 없어요.`)) return;
     await Lib.remove(s.id); toast('삭제했어요'); go('#/manage');
   },
 };
@@ -1322,7 +1377,26 @@ window.addEventListener('hashchange', () => {
 window.addEventListener('pagehide', () => Session.save());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Session.save(); });
 
+// 설명서: 손가락으로 좌우로 밀어 넘기기
+let swipeX = null;
+document.addEventListener('touchstart', e => { if (e.target.closest('[data-swipe]')) swipeX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (swipeX == null || App.ui.guide == null) return;
+  const dx = e.changedTouches[0].clientX - swipeX; swipeX = null;
+  const n = (GUIDE[I18N.lang] || GUIDE.ko).length;
+  if (dx < -50 && App.ui.guide < n - 1) ACT.guideNext();
+  else if (dx > 50 && App.ui.guide > 0) ACT.guidePrev();
+});
+document.addEventListener('keydown', e => {
+  if (App.ui.guide == null) return;
+  if (e.key === 'ArrowRight') { e.stopImmediatePropagation(); if (App.ui.guide < (GUIDE[I18N.lang] || GUIDE.ko).length - 1) ACT.guideNext(); }
+  else if (e.key === 'ArrowLeft') { e.stopImmediatePropagation(); ACT.guidePrev(); }
+  else if (e.key === 'Escape') { e.stopImmediatePropagation(); closeGuide(); }
+}, true);
+
 (async function init() {
+  I18N.init();
+  document.documentElement.lang = I18N.lang;
   await DB.open();
   Profiles.restore();
   applyTheme(Profiles.cur ? Profiles.cur.theme || 'calm' : LS.get('theme', 'calm'), false);
