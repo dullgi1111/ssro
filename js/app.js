@@ -140,8 +140,10 @@ function resumeFab() {
 function topBar(crumb) {
   const p = Profiles.cur;
   const home = !location.hash || location.hash === '#/' || location.hash === '#/login';
-  return `<header class="bar"><div class="wrap">
-    ${home ? '' : '<button class="btn back" data-act="back" aria-label="이전 화면으로">←</button>'}
+  // [추가] 이전 화면(←) 오른쪽에 🏠 홈 버튼. 안쪽 화면(inner)에서는 폰에서 로고·설명서 버튼을 숨김
+  return `<header class="bar ${home ? '' : 'inner'}"><div class="wrap">
+    ${home ? '' : `<button class="btn back" data-act="back" aria-label="이전 화면으로">←</button>
+    <button class="btn homebtn" data-act="go" data-to="${p ? '#/' : '#/login'}" aria-label="홈으로" title="홈으로"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg></button>`}
     <button class="logo" data-act="go" data-to="${p ? '#/' : '#/login'}" aria-label="스스로 홈"><img class="logo-img" src="icons/icon-64.png" alt=""><span class="logo-t" data-notr>스스로</span></button>
     <div class="crumb">${crumb}</div>
     ${p ? (() => { const lv = XP.level(), tot = XP.get().total; return `<div class="hud" aria-label="오늘의 학습 현황">
@@ -150,7 +152,7 @@ function topBar(crumb) {
       <span class="hud-i lv" title="레벨과 다음 레벨까지 경험치"><span>Lv.<b>${lv.lv}</b></span>
         <span class="hud-exp"><span class="hud-bar"><i style="width:${lv.pct}%"></i></span><small><b>${tot - lv.from}</b>/${lv.to - lv.from} XP</small></span></span></div>`; })() : ''}
     <button class="btn" data-act="themeToggle" aria-expanded="${App.ui.themeOpen}" aria-label="테마">🎨</button>
-    <button class="btn" data-act="openGuide" aria-label="사용 설명서" title="사용 설명서">📖</button>
+    <button class="btn guidebtn" data-act="openGuide" aria-label="사용 설명서" title="사용 설명서">📖</button>
     <button class="btn" data-act="go" data-to="#/settings" aria-label="설정" title="설정">⚙️</button>
     ${p ? `<button class="btn me" data-act="go" data-to="#/profile" aria-label="내 프로필">${avatar(p, 'sm')}<span class="hide-sm" data-notr>${esc(p.name)}</span></button>` : ''}
   </div>${App.ui.themeOpen ? themePop() : ''}</header>`;
@@ -166,9 +168,11 @@ function render() {
   }
   if (out.redirect) { history.replaceState(null, '', out.redirect); lastHash = location.hash; return render(); }
   App.ctx = out.ctx || null;
-  $app.innerHTML = (out.bar ?? topBar(out.crumb || '')) + `<main>${out.body}</main>` + (out.overlay || '') + (out.overlay ? '' : resumeFab()) + guideBook();
+  $app.innerHTML = (out.bar ?? topBar(out.crumb || '')) + `<main>${out.body}</main>` + (out.overlay || '') + (out.overlay ? '' : resumeFab()) + guideBook()
+    + (out.overlay ? '' : Plus.overlay());   // [추가] 보상·스킨·QR 창
   I18N.apply($app);
   if (out.after) out.after();
+  Plus.after();   // [추가] QR 카메라 연결·정리
   Session.save();
 }
 
@@ -361,6 +365,7 @@ function vHome() {
         <button class="gate-btn" data-act="go" data-to="#/manage"><span class="ico">🗂️</span><b>과목 추가·수정</b>
           <span>과목을 만들고 강의자료(PDF·PPT·한글·워드·텍스트)를 올려요</span></button>
       </div>
+      ${Plus.home()}
       ${!subs.length ? `<div class="panel row between"><div><b>아직 과목이 없어요</b><br><span class="hint">과목 이름을 정하고 강의자료를 올리면 바로 공부를 시작할 수 있어요.</span></div>
         <button class="btn primary" data-act="go" data-to="#/manage/new">첫 과목 만들기 →</button></div>` : ''}
       ${last ? `<div class="panel row between"><div><div class="label">이어서 공부하기</div><b data-notr>${esc(last.s.name)}</b><span class="hint"> · 마지막 학습 ${U.date(last.t)}</span></div>
@@ -375,10 +380,11 @@ function towerCard() {
   const n = Prog.streak(), best = Prog.best(), today = Prog.days().includes(U.day());
   const SHOW = 10, shown = Math.min(n, SHOW);
   const COLS = ['#e8845a', '#f2b33d', '#6cbf6a', '#4fa3e0', '#9a7be0', '#e0679a'];
+  const skin = Plus.skin();   // [추가] 블록 색·질감은 끼고 있는 스킨에서
   let blocks = '';
   for (let i = shown - 1; i >= 0; i--) {
     const floor = n - shown + i + 1;
-    blocks += `<div class="blk ${i === shown - 1 && today ? 'new' : ''}" style="--c:${COLS[(floor - 1) % COLS.length]}"><span>${floor}층</span></div>`;
+    blocks += `<div class="blk ${skin.id !== 'basic' ? 'skin-' + skin.id : ''} ${i === shown - 1 && today ? 'new' : ''}" style="--c:${COLS[(floor - 1) % COLS.length]}"><span>${floor}층</span></div>`;
   }
   const msg = !n ? '오늘 공부하면 첫 층이 생겨요!' : today ? '오늘 한 층 올렸어요! 내일도 이어서 쌓아요.' : '오늘 공부하면 한 층 더 올라가요. 쉬면 탑이 무너져요!';
   return `<section class="panel towercard">
@@ -387,7 +393,8 @@ function towerCard() {
       <div class="label" style="margin:0">공부 탑</div>
       <div class="tower-n"><b>${n}</b>층</div>
       <p class="hint" style="margin:0">${msg}</p>
-      <span class="chip" style="justify-self:start">🏆 최고 기록 ${best}층</span></div></section>`;
+      <span class="chip" style="justify-self:start">🏆 최고 기록 ${best}층</span></div>
+    ${Plus.towerSide()}</section>`;
 }
 function goalCard() {
   const t = XP.today(), g = XP.goal(), pc = Math.min(100, Math.round(t / g * 100)), L2 = XP.level();
@@ -649,6 +656,7 @@ function playDone(s, P) {
       <div class="ds acc"><span>정답률</span><b>🎯 ${acc}%</b></div>
       <div class="ds ok"><span>맞힌 문제</span><b>✓ ${ok}/${P.qs.length}</b></div></div>
     ${part || bad || skip ? `<p class="hint" style="margin:0;text-align:center">부분 ${part} · 틀림 ${bad}${skip ? ' · 건너뜀 ' + skip : ''}</p>` : ''}
+    ${P.review ? Plus.reviewDone(s) : ''}
     <div class="row" style="justify-content:center">
       ${wrongN ? `<button class="btn primary" data-act="retryWrong">틀린 문제만 다시 풀기 (${wrongN})</button>` : ''}
       ${P.kind === 'drill' ? `<button class="btn" data-act="regenDrill">🔄 새 문제로 다시 풀기</button><button class="btn" data-act="go" data-to="${L('s', s.id, 'concept', P.uid)}">개념 다시 보기</button>`
@@ -739,6 +747,7 @@ function vLog(s) {
           ${wrong.length ? `<button class="btn primary" data-act="wrongOnly" data-sid="${esc(s.id)}">오답만 다시 풀기</button>
             <ul class="wlist">${wrong.slice(0, 8).map(r => `<li><span class="chip">${TYPES[r.ty] || ''}</span><span>${esc(U.plain(r.snap.q).slice(0, 70))}</span></li>`).join('')}</ul>
             ${wrong.length > 8 ? `<p class="hint">외 ${wrong.length - 8}문항</p>` : ''}` : '<p class="hint">틀린 문제가 없어요. 문제를 풀면 여기에 모여요.</p>'}</section></div>
+      ${Plus.srsPanel(s)}
       <section class="panel"><h2>시험 기록</h2>${p.exams.length ? `<ul class="hist">${p.exams.slice(0, 15).map(x => `<li><span class="mono hint">${U.date(x.at)}</span>
           <span>${x.n}문항 · ${x.set.diff === 'mix' ? '난이도 섞기' : DIFF[x.set.diff]} · ${x.set.minutes ? x.set.minutes + '분' : '무제한'} · ${U.mmss(x.used)} 걸림</span><b class="mono">${fmt(x.score)}점</b></li>`).join('')}</ul>`
         : '<p class="hint">아직 시험을 보지 않았어요. [문제 생성] 탭에서 시험 보기를 골라 보세요.</p>'}</section></div>`,
@@ -858,6 +867,7 @@ function finishExam(E) {
   E.result.xp = Math.round(sum * 10) + 20;   // 맞힌 만큼 + 시험 완주 보너스 20
   E.phase = 'result';
   E.celebrate = true;
+  if (E.duel) Plus.duelFinish(E);   // [추가] 대결 시험이면 결과 저장
   gainXP(E.result.xp); Sfx.play('done');
 }
 function vExamResult(s, E) {
@@ -873,6 +883,7 @@ function vExamResult(s, E) {
     crumb: crumbOf(s, '시험 결과'),
     after: E.celebrate ? celebrate(E) : null,
     body: `<div class="page wrap">
+      ${E.duel ? Plus.duelResult(s, E) : ''}
       <section class="panel score"><div class="big">${fmt(R.score)}<small> / 100</small></div>
         <div class="stack" style="gap:10px"><b style="font-size:18px">${msg}</b>
           <div class="parts"><div>획득 XP<b>⚡ ${R.xp || 0}</b></div><div>맞음<b>${R.ok}</b></div><div>부분<b>${R.part}</b></div><div>틀림<b>${R.bad}</b></div><div>안 푼 문제<b>${R.blank}</b></div><div>걸린 시간<b>${U.mmss(R.used)}</b></div></div></div></section>
@@ -964,6 +975,7 @@ function vSubjEdit(s) {
             <div class="preview">${m.sections.slice(0, 4).map(sec => `<div><b>${esc(sec.title || '(제목 없음)')}</b><ul>${sec.lines.slice(0, 4).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('')}</div></div></details>`).join('')
           || '<div class="empty">아직 자료가 없어요. 아래에서 올려 주세요.</div>'}</section>
       <section class="panel stack"><h2>자료 더 올리기</h2>${uploader(s.id)}</section>
+      ${Plus.examEditor(s)}
       <section class="panel stack"><h2>기타</h2>
         <div class="row"><button class="btn" data-act="exportSubj" data-sid="${esc(s.id)}">과목 파일로 내보내기</button>
           <button class="btn" data-act="edResetProg" data-sid="${esc(s.id)}">학습 기록 초기화</button>
@@ -1395,6 +1407,8 @@ document.addEventListener('keydown', e => {
 }, true);
 
 (async function init() {
+  // [추가] 모든 스크립트(plus.js 포함)를 다 읽을 때까지 기다림 → 'Plus is not defined' 방지
+  if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
   I18N.init();
   document.documentElement.lang = I18N.lang;
   await DB.open();
@@ -1402,7 +1416,7 @@ document.addEventListener('keydown', e => {
   applyTheme(Profiles.cur ? Profiles.cur.theme || 'calm' : LS.get('theme', 'calm'), false);
   await Lib.load();
   Session.load();
-  Prog.onNewDay = n => setTimeout(() => toast(`🧱 공부 탑이 한 층 올라갔어요! (${n}층)`), 900);
+  Prog.onNewDay = n => { setTimeout(() => toast(`🧱 공부 탑이 한 층 올라갔어요! (${n}층)`), 900); Plus.onTower(n); };
   render();
   // 웹으로 열었을 때만 오프라인 캐시 사용 (안드로이드 앱 안에서는 파일이 이미 들어 있음)
   if (location.protocol.startsWith('http') && 'serviceWorker' in navigator && !window.Capacitor) navigator.serviceWorker.register('sw.js').catch(() => { });

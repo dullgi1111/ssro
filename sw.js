@@ -1,9 +1,9 @@
 /* 스스로 — 오프라인용 서비스워커 (http/https로 열었을 때만 동작)
    파일을 고치면 VERSION을 올려야 폰에 새 버전이 반영된다. */
-const VERSION = 'ssro-v9';
+const VERSION = 'ssro-v10';
 const FILES = [
-  './', './index.html', './css/app.css', './js/core.js', './js/extract.js', './js/gen.js', './js/i18n.js', './js/app.js',
-  './lib/pdf.min.js', './lib/pdf.worker.min.js', './lib/jszip.min.js', './manifest.webmanifest',
+  './', './index.html', './css/app.css', './js/core.js', './js/extract.js', './js/gen.js', './js/i18n.js', './js/app.js', './js/plus.js',
+  './lib/pdf.min.js', './lib/pdf.worker.min.js', './lib/jszip.min.js', './lib/qrcode.min.js', './lib/jsQR.min.js', './manifest.webmanifest',
   './icons/icon-64.png', './icons/icon-192.png', './icons/logo.png', './icons/apple-touch-icon.png', './icons/icon-512.png', './icons/icon-512-maskable.png',
 ];
 

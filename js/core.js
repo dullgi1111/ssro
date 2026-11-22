@@ -113,7 +113,9 @@ const Profiles = {
     const subjects = (await DB.all()).filter(s => s.owner === id);
     const prog = {};
     subjects.forEach(s => { prog[s.id] = LS.get(`p.${id}.prog.${s.id}`, null); });
-    return { format: 'ssro-backup-1', exportedAt: Date.now(), profile: p, subjects, prog, days: LS.get(`p.${id}.days`, []), xp: LS.get(`p.${id}.xp`, null) };
+    return { format: 'ssro-backup-1', exportedAt: Date.now(), profile: p, subjects, prog, days: LS.get(`p.${id}.days`, []), xp: LS.get(`p.${id}.xp`, null),
+      // [추가] 날짜별 풀이 기록 · 친구 카드 · 대결 기록
+      daily: LS.get(`p.${id}.daily`, null), friends: LS.get(`p.${id}.friends`, null), duels: LS.get(`p.${id}.duels`, null) };
   },
   async restoreBackup(b) {
     if (!b || b.format !== 'ssro-backup-1' || !b.profile) throw new Error('스스로 백업 파일이 아니에요.');
@@ -121,13 +123,23 @@ const Profiles = {
     const p = { ...old, id, pin: null, createdAt: old.createdAt || Date.now() };
     if (this.all().some(x => x.name === p.name)) p.name += ' (가져옴)';
     LS.set('profiles', [...this.all(), p]);
+    const sidMap = {};
     for (const s of b.subjects || []) {
       const nid = U.uid('s');
+      sidMap[s.id] = nid;
       await DB.put({ ...s, id: nid, owner: id });
       if (b.prog && b.prog[s.id]) LS.set(`p.${id}.prog.${nid}`, b.prog[s.id]);
     }
     LS.set(`p.${id}.days`, b.days || []);
     if (b.xp) LS.set(`p.${id}.xp`, b.xp);
+    // [추가] 예전 백업에는 없으면 건너뜀. 날짜별 기록은 과목 id를 새 id로 바꿔 넣음
+    if (b.daily) {
+      const d = {};
+      for (const [day, per] of Object.entries(b.daily)) { d[day] = {}; for (const [sid, v] of Object.entries(per)) d[day][sidMap[sid] || sid] = v; }
+      LS.set(`p.${id}.daily`, d);
+    }
+    if (b.friends) LS.set(`p.${id}.friends`, b.friends);
+    if (b.duels) LS.set(`p.${id}.duels`, b.duels);
     return p;
   },
 };
@@ -161,13 +173,80 @@ const Lib = {
   async remove(id) { await DB.del(id); Prog.reset(id); await this.load(); },
 };
 
+/* ---------- [추가] 복습 일정 (간격 반복) ----------
+   틀리면 1단계(내일). 복습 날에 맞히면 다음 단계: 1일 → 3일 → 7일 → 14일 → 30일 → 완전 습득.
+   복습 중 틀리면 다시 1단계. 복습 날이 아직 안 된 문제는 맞혀도 단계 그대로 */
+const SRS = {
+  GAP: [1, 3, 7, 14, 30],
+  addDays(n, from = U.day()) { const d = new Date(from + 'T00:00:00'); d.setDate(d.getDate() + n); return U.day(d.getTime()); },
+  apply(r, q, score) {
+    const today = U.day();
+    if (score >= 1) {
+      if (!r.box) { delete r.snap; return; }                 // 복습 대상이 아니면 예전처럼 사본을 지움
+      if (r.due > today) return;                             // 아직 복습 날이 아님 → 단계 그대로
+      if (r.box >= this.GAP.length) { r.mastered = Date.now(); delete r.box; delete r.due; delete r.snap; return; }
+      r.box++; r.due = this.addDays(this.GAP[r.box - 1]); r.snap = q;
+    } else {
+      r.box = 1; r.due = this.addDays(1); r.snap = q; delete r.mastered;
+    }
+  },
+  // 채점을 바꿀 때 되돌리기용 (문제 사본은 크니까 있었는지만 기억)
+  keep(r) { return { box: r.box, due: r.due, mastered: r.mastered, sn: r.snap ? 1 : 0 }; },
+  restore(r, k, q) {
+    for (const f of ['box', 'due', 'mastered']) { if (k[f] === undefined) delete r[f]; else r[f] = k[f]; }
+    if (k.sn) r.snap = q; else delete r.snap;
+  },
+};
+
+/* ---------- [추가] 날짜별 · 과목별 푼 문제 수와 맞힌 수 (최근 400일) ---------- */
+const Daily = {
+  key() { return `p.${Profiles.cur.id}.daily`; },
+  get() { return LS.get(this.key(), {}); },
+  add(sid, n, c) {
+    const d = this.get(), t = U.day();
+    const per = d[t] || (d[t] = {}), v = per[sid] || (per[sid] = [0, 0]);
+    v[0] += n; v[1] += c;
+    const ks = Object.keys(d).sort();
+    if (ks.length > 400) ks.slice(0, ks.length - 400).forEach(k => delete d[k]);
+    LS.set(this.key(), d);
+  },
+  on(day, sid) { const per = this.get()[day] || {}; return sid ? per[sid] || [0, 0] : Object.values(per).reduce((a, v) => [a[0] + v[0], a[1] + v[1]], [0, 0]); },
+};
+
 /* ---------- 학습 기록 (프로필 × 과목) ---------- */
 const Prog = {
   cache: {},
   key(sid) { return `p.${Profiles.cur.id}.prog.${sid}`; },
   of(sid) {
-    if (!this.cache[sid]) this.cache[sid] = LS.get(this.key(sid), { q: {}, learned: {}, exams: [], last: 0 });
+    if (!this.cache[sid]) {
+      const p = LS.get(this.key(sid), { q: {}, learned: {}, exams: [], last: 0 });
+      // [추가] 예전 오답은 처음 열 때 "1단계 · 오늘 복습"으로 옮김 (한 번만)
+      if (!p.srs) {
+        for (const r of Object.values(p.q)) if (r.s < 1 && r.snap && !r.box) { r.box = 1; r.due = U.day(); }
+        p.srs = 1; LS.set(this.key(sid), p);
+      }
+      this.cache[sid] = p;
+    }
     return this.cache[sid];
+  },
+  // [추가] 오늘 복습할 문제 · 단계별 통계 · 다음 복습
+  due(sid) {
+    const t = U.day();
+    return Object.values(this.of(sid).q).filter(r => r.box && r.snap && r.due <= t).sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : a.box - b.box));
+  },
+  srsStat(sid) {
+    const st = { box: [0, 0, 0, 0, 0], mastered: 0, due: 0, next: null };
+    const t = U.day();
+    for (const r of Object.values(this.of(sid).q)) {
+      if (r.mastered) st.mastered++;
+      if (r.box && r.snap) {
+        st.box[r.box - 1]++;
+        if (r.due <= t) st.due++;
+        else if (!st.next || r.due < st.next.day) st.next = { day: r.due, n: 1 };
+        else if (r.due === st.next.day) st.next.n++;
+      }
+    }
+    return st;
   },
   save(sid) { LS.set(this.key(sid), this.of(sid)); },
   reset(sid) { delete this.cache[sid]; LS.del(this.key(sid)); },
@@ -204,15 +283,22 @@ const Prog = {
     const p = this.of(sid);
     const r = p.q[q.id] || (p.q[q.id] = { n: 0, c: 0, w: 0, s: 0 });
     r.n++; r.s = score; r.t = Date.now(); r.u = q.unit; r.ty = q.type;
-    if (score >= 1) { r.c++; delete r.snap; } else { r.w++; r.snap = q; }
+    if (score >= 1) r.c++; else r.w++;
+    // [추가] 맞혀도 사본을 바로 지우지 않고 복습 단계에 따라 처리
+    r.pk = SRS.keep(r); SRS.apply(r, q, score);
     p.last = Date.now();
     this.save(sid); this.touchDay();
+    Daily.add(sid, 1, score >= 1 ? 1 : 0);
   },
   amend(sid, q, prev, next) {
     const r = this.of(sid).q[q.id];
     if (!r) return this.record(sid, q, next);
     if (prev >= 1) r.c--; else r.w--;
-    if (next >= 1) { r.c++; delete r.snap; } else { r.w++; r.snap = q; }
+    if (next >= 1) r.c++; else r.w++;
+    // [추가] 서술형 자기 채점을 바꾸면 복습 단계도 다시 계산
+    if (r.pk) SRS.restore(r, r.pk, q);
+    SRS.apply(r, q, next);
+    if ((prev >= 1) !== (next >= 1)) Daily.add(sid, 0, next >= 1 ? 1 : -1);
     r.s = next; this.save(sid);
   },
   learn(sid, uid, on = true) {
@@ -323,11 +409,14 @@ const Grade = {
 };
 
 /* ---------- 파일 내려받기 ---------- */
-function downloadJSON(name, obj) {
-  const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
+// [추가] 파일 저장 공통 함수 (백업 · 과목 파일 · 리포트 이미지)
+function saveBlob(fileName, blob) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = name.replace(/[\\/:*?"<>|]/g, '_') + '.json';
+  a.download = fileName.replace(/[\\/:*?"<>|]/g, '_');
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function downloadJSON(name, obj) {
+  saveBlob(name + '.json', new Blob([JSON.stringify(obj)], { type: 'application/json' }));
 }
