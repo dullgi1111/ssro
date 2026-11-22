@@ -1,6 +1,6 @@
 /* 스스로 — 오프라인용 서비스워커 (http/https로 열었을 때만 동작)
    파일을 고치면 VERSION을 올려야 폰에 새 버전이 반영된다. */
-const VERSION = 'ssro-v12';
+const VERSION = 'ssro-v13';
 const FILES = [
   './', './index.html', './css/app.css', './js/core.js', './js/extract.js', './js/gen.js', './js/i18n.js', './js/app.js', './js/plus.js', './js/shop.js', './js/gpa.js',
   './lib/pdf.min.js', './lib/pdf.worker.min.js', './lib/jszip.min.js', './lib/qrcode.min.js', './lib/jsQR.min.js', './manifest.webmanifest',
@@ -8,7 +8,8 @@ const FILES = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' → 브라우저에 남은 예전 파일 말고 서버의 새 파일을 받아 저장
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));

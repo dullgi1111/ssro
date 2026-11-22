@@ -1429,5 +1429,13 @@ document.addEventListener('keydown', e => {
   Prog.onNewDay = n => { setTimeout(() => toast(`🧱 공부 탑이 한 층 올라갔어요! (${n}층)`), 900); Plus.onTower(n); };
   render();
   // 웹으로 열었을 때만 오프라인 캐시 사용 (안드로이드 앱 안에서는 파일이 이미 들어 있음)
-  if (location.protocol.startsWith('http') && 'serviceWorker' in navigator && !window.Capacitor) navigator.serviceWorker.register('sw.js').catch(() => { });
+  if (location.protocol.startsWith('http') && 'serviceWorker' in navigator && !window.Capacitor) {
+    // [추가] 새 버전이 설치되면 한 번 새로고침해서 바로 보여 줌 (처음 설치 때는 새로고침 안 함)
+    const hadCtl = !!navigator.serviceWorker.controller; let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtl || reloaded) return; reloaded = true; location.reload(); });
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // 앱을 다시 띄울 때마다 새 버전이 있는지 확인
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => { }); });
+    }).catch(() => { });
+  }
 })();
