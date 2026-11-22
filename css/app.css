@@ -798,3 +798,69 @@ h1, h2, h3, .hero h1, .logo-t, .stat b, .tower-n b, .ring b, .score .big, .dd, .
 .field input[type=text], .field input[type=number], .field textarea, .field select, .input { border-radius: 14px; border-width: 1.5px; }
 .chip { border-width: 1px; }
 @media (max-width: 560px) { .panel { border-radius: 22px; } }
+
+/* ================= [추가] 2026-11-22 포인트 · 기프티콘 상점 ================= */
+.quick3.qn4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.quick3.qn5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.qbtn .qsub { display: block; font-size: 12px; color: var(--muted); font-weight: 700; }
+@media (min-width: 561px) { .qn4 .qbtn, .qn5 .qbtn { flex-direction: column; text-align: center; gap: 4px; } }
+@media (max-width: 560px) {
+  .qn4 .qbtn b, .qn5 .qbtn b { font-size: 13px; }
+  .quick3.qn5 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .qn5 .qbtn { grid-column: span 2; }
+  .qn5 .qbtn:nth-child(n+4) { grid-column: span 3; }
+}
+@media (max-width: 360px) { .quick3.qn4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.shop-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.shop-head .pts { font-family: Jua, var(--font, inherit); font-size: 34px; color: var(--ink); line-height: 1.1; }
+.shop-head .pts small { font-size: 18px; margin-left: 2px; }
+.shop-sub { display: grid; gap: 6px; min-width: 200px; flex: 1; max-width: 360px; }
+.bar-mini { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar-mini i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.shop-item { display: grid; gap: 8px; padding: 16px; border: 2px solid var(--line); border-radius: 20px; background: var(--surface); text-align: center; justify-items: center; }
+.shop-item > .btn, .shop-item > .bar-mini { width: 100%; }
+.shop-item.soldout { opacity: .55; }
+.si-ico { font-size: 40px; line-height: 1; }
+.si-ico.sm { font-size: 26px; }
+.si-price { font-weight: 800; font-size: 17px; color: var(--accent); }
+.shop-orders li { align-items: center; }
+.hist .pos { color: var(--ok, #2e9e5b); }
+.hist .neg { color: var(--bad, #d9534f); }
+@media (max-width: 560px) { .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .shop-item { padding: 12px 8px; } .si-ico { font-size: 34px; } }
+.shop-orders .so-right { display: grid; justify-items: end; gap: 6px; }
+
+/* ================= [추가] 2026-11-22 학점 계산기 ================= */
+.gpa-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.gpa-big { display: grid; }
+.gpa-big b { font-family: Jua, inherit; font-size: 44px; line-height: 1.05; color: var(--accent); }
+.gpa-big small { color: var(--muted); font-weight: 700; }
+.gpa-kv { display: flex; flex-wrap: wrap; gap: 20px; flex: 1; }
+.gpa-kv .hint { white-space: nowrap; }
+.gpa-kv > div { display: grid; }
+.gpa-kv b { font-size: 22px; }
+.gpa-sem { display: grid; gap: 10px; }
+.gpa-sem-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gpa-sem-head .gpa-sname { flex: 1; min-width: 120px; max-width: 220px; font-weight: 800; }
+.gpa-sem-head .btn { margin-left: auto; }
+.gpa-rows { display: grid; gap: 6px; }
+.gpa-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 84px 58px 36px; gap: 6px; align-items: center; }
+.gpa-row .input { width: 100%; min-width: 0; padding-left: 8px; padding-right: 4px; }
+.gpa-row select.gr-none { color: var(--muted); }
+.gpa-th { font-size: 12px; color: var(--muted); font-weight: 700; }
+.gpa-mj { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+.gpa-need { padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); }
+.gpa-need b { font-size: 20px; color: var(--accent); }
+.gpa-chart { display: flex; gap: 10px; align-items: flex-end; overflow-x: auto; padding-bottom: 4px; }
+.gc-col { display: grid; justify-items: center; gap: 4px; min-width: 52px; font-size: 12px; }
+.gc-bar { width: 26px; height: 110px; border-radius: 10px; background: var(--line); display: flex; align-items: flex-end; overflow: hidden; }
+.gc-bar i { display: block; width: 100%; background: var(--accent); border-radius: 10px; }
+@media (max-width: 560px) {
+  .gpa-row { grid-template-columns: minmax(0, 1fr) 70px 64px 30px 30px; gap: 4px; }
+  .gpa-mj span { display: none; }
+  .gpa-th span:nth-child(4) { font-size: 0; }
+  .gpa-th span:nth-child(4)::after { content: '전공'; font-size: 11px; }
+  .gpa-kv { gap: 14px; flex-basis: 100%; }
+  .gpa-sem-head .gpa-sname { max-width: 130px; }
+  .gpa-kv b { font-size: 18px; }
+}

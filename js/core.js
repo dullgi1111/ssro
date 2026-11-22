@@ -115,7 +115,9 @@ const Profiles = {
     subjects.forEach(s => { prog[s.id] = LS.get(`p.${id}.prog.${s.id}`, null); });
     return { format: 'ssro-backup-1', exportedAt: Date.now(), profile: p, subjects, prog, days: LS.get(`p.${id}.days`, []), xp: LS.get(`p.${id}.xp`, null),
       // [추가] 날짜별 풀이 기록 · 친구 카드 · 대결 기록
-      daily: LS.get(`p.${id}.daily`, null), friends: LS.get(`p.${id}.friends`, null), duels: LS.get(`p.${id}.duels`, null) };
+      daily: LS.get(`p.${id}.daily`, null), friends: LS.get(`p.${id}.friends`, null), duels: LS.get(`p.${id}.duels`, null),
+      // [추가] 포인트 · 교환 내역 · 학점 계산기
+      pts: LS.get(`p.${id}.pts`, null), gpa: LS.get(`p.${id}.gpa`, null) };
   },
   async restoreBackup(b) {
     if (!b || b.format !== 'ssro-backup-1' || !b.profile) throw new Error('스스로 백업 파일이 아니에요.');
@@ -140,6 +142,8 @@ const Profiles = {
     }
     if (b.friends) LS.set(`p.${id}.friends`, b.friends);
     if (b.duels) LS.set(`p.${id}.duels`, b.duels);
+    if (b.pts) LS.set(`p.${id}.pts`, b.pts);
+    if (b.gpa) LS.set(`p.${id}.gpa`, b.gpa);
     return p;
   },
 };

@@ -543,10 +543,13 @@ const Plus = (() => {
 
   /* ---------- 홈 화면 추가 부분 ---------- */
   function home() {
-    return `<div class="quick3">
+    // [추가] 상점(shop.js)·학점 계산기(gpa.js)가 있으면 버튼을 덧붙임
+    const extra = [typeof Shop !== 'undefined' ? Shop.homeBtn() : '', typeof Gpa !== 'undefined' ? Gpa.homeBtn() : ''].filter(Boolean);
+    return `<div class="quick3 qn${3 + extra.length}">
         <button class="qbtn" data-act="go" data-to="#/plan"><span class="ico">📅</span><b>시험 계획</b></button>
         <button class="qbtn" data-act="go" data-to="#/report"><span class="ico">📊</span><b>학습 리포트</b></button>
-        <button class="qbtn" data-act="go" data-to="#/duel"><span class="ico">⚔️</span><b>친구 대결</b></button></div>
+        <button class="qbtn" data-act="go" data-to="#/duel"><span class="ico">⚔️</span><b>친구 대결</b></button>
+        ${extra.join('')}</div>
       ${reviewCard()}${examCard()}`;
   }
 

@@ -950,6 +950,11 @@ function vSubjNew() {
           ${N.mats.length ? `<div class="label">추가된 자료 ${N.mats.length}개 (자료 하나 = 단원 하나)</div>
             <ul class="uplist">${N.mats.map((m, i) => `<li class="done"><span>${i + 1}</span><div><b data-notr>${esc(m.name)}</b><div class="hint">${KIND[m.kind]} · 개념 카드 ${m.sections.length}장</div></div>
               <button class="btn sm ghost" data-act="nsDel" data-i="${i}">빼기</button></li>`).join('')}</ul>` : ''}</section>
+        <section class="stepbox"><h2>📅 시험 일정 (선택)</h2>
+          <p class="hint" style="margin:0 0 8px">날짜를 넣으면 홈과 [시험 계획]에 D-day와 오늘 할 일이 나와요. 몰라도 비워 두고 나중에 [과목 추가·수정]에서 넣을 수 있어요.</p>
+          <div class="grid2"><label class="field"><span class="label">시험 이름</span><input type="text" value="${esc(N.exName || '')}" placeholder="예: 중간고사 (비우면 '시험')" data-in="ns" data-k="exName" maxlength="30"></label>
+            <label class="field"><span class="label">시험 날짜</span><input type="date" class="input" value="${esc(N.exDate || '')}" min="${U.day()}" data-in="ns" data-k="exDate"></label></div>
+          <p class="hint" style="margin:6px 0 0">범위는 전체 단원으로 들어가요. 범위를 좁히려면 과목을 만든 뒤 [과목 추가·수정]에서 바꿔요.</p></section>
       </div>
       <div class="row end"><button class="btn" data-act="go" data-to="#/manage">취소</button>
         <button class="btn primary" data-act="nsSave" ${busy ? 'disabled' : ''}>과목 만들기</button></div></div>`,
@@ -1238,9 +1243,14 @@ const ACT = {
     if (!N.name.trim()) return toast('과목 이름을 입력해 주세요');
     if (!N.mats.length) return toast('자료를 하나 이상 올려 주세요');
     const s = { id: U.uid('s'), name: N.name.trim(), desc: N.desc.trim(), materials: N.mats };
+    // [추가] 선택 항목: 시험 날짜를 넣었으면 시험 일정(전체 범위)으로 함께 저장
+    const exDate = (N.exDate || '').trim();
+    if (exDate && !/^\d{4}-\d{2}-\d{2}$/.test(exDate)) return toast('시험 날짜를 다시 골라 주세요');
+    if (exDate && exDate < U.day()) return toast('시험 날짜가 이미 지났어요. 오늘 이후로 골라 주세요');
+    if (exDate) s.exams = [{ id: U.uid('e'), name: (N.exName || '').trim() || '시험', date: exDate, units: [], createdAt: Date.now(), real: null }];
     const ok = await Lib.save(s);
     App.ui.newSubj = null; App.ui.up = null;
-    toast(ok ? '과목을 만들었어요! 개념 정리부터 시작해 보세요' : '저장하지 못했어요. 저장 공간을 확인해 주세요.');
+    toast(ok ? (exDate ? '과목과 시험 일정을 만들었어요! 홈에서 D-day를 확인해 보세요' : '과목을 만들었어요! 개념 정리부터 시작해 보세요') :'저장하지 못했어요. 저장 공간을 확인해 주세요.');
     if (ok) go(L('s', s.id, 'concept'));
   },
   edMeta(el) {
