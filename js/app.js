@@ -204,6 +204,9 @@ function vSettings() {
         <p class="hint sample-text" style="margin:0">가나다라 ABC 123</p></section>
       <section class="panel stack"><h2>언어</h2>
         <div class="seg" data-notr>${LANGS.map(([k, l]) => `<button data-act="setLang" data-v="${k}" aria-pressed="${I18N.lang === k}">${l}</button>`).join('')}</div></section>
+      <section class="panel stack"><h2>로그인 유지</h2>
+        <div class="seg">${[[true, '켜기'], [false, '끄기']].map(([v, l]) => `<button data-act="setKeepLogin" data-v="${v}" aria-pressed="${LS.get('keepLogin', true) === v}">${l}</button>`).join('')}</div>
+        <p class="hint" style="margin:0">끄면 앱을 열 때마다 프로필을 다시 골라요. PIN을 건 프로필은 켜져 있어도 열 때마다 PIN을 물어요. (이 기기에만 적용)</p></section>
       <section class="panel row between"><div><b>사용 설명서</b></div><button class="btn" data-act="openGuide">📖</button></section>
     </div>`,
   };
@@ -1138,6 +1141,7 @@ const ACT = {
   guideDone() { closeGuide(); },
   // 설정
   setFont(el) { I18N.applyFont(el.dataset.v); render(); },
+  setKeepLogin(el) { const on = el.dataset.v === 'true'; LS.set('keepLogin', on); toast(on ? '로그인 유지를 켰어요' : '이제 앱을 열 때마다 프로필을 골라요'); render(); },
   setLang(el) { I18N.setLang(el.dataset.v); render(); },
   pathExam(el) { const s = Lib.get(el.dataset.sid); const o = genOpts(s); o.mode = 'exam'; o.units = []; go(L('s', s.id, 'gen')); },
   setGoal(el) { Profiles.update(Profiles.cur.id, { goal: Number(el.dataset.v) }); toast(`하루 목표를 ${el.dataset.v} XP로 정했어요`); render(); },
@@ -1423,6 +1427,16 @@ document.addEventListener('keydown', e => {
   document.documentElement.lang = I18N.lang;
   await DB.open();
   Profiles.restore();
+  // [추가] 앱을 새로 열 때: 로그인 유지가 꺼져 있으면 프로필 고르기부터, PIN을 건 프로필이면 PIN부터 물음
+  if (Profiles.cur) {
+    const keep = LS.get('keepLogin', true) !== false, p = Profiles.cur;
+    if (!keep || p.pin) {
+      Profiles.logout();
+      if (keep && p.pin) App.ui.pinFor = p.id;
+      history.replaceState(null, '', '#/login');
+      if (App.ui.pinFor) setTimeout(() => document.getElementById('pinIn')?.focus(), 300);
+    }
+  }
   applyTheme(Profiles.cur ? Profiles.cur.theme || 'calm' : LS.get('theme', 'calm'), false);
   await Lib.load();
   Session.load();

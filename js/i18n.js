@@ -157,6 +157,10 @@ const EXACT = [
   ['설정', 'Settings', '设置', '設定'],
   ['글자 크기', 'Text size', '字体大小', '文字サイズ'],
   ['언어', 'Language', '语言', '言語'],
+  ['로그인 유지', 'Stay signed in', '保持登录', 'ログイン状態を保持'],
+  ['켜기', 'On', '开', 'オン'],
+  ['끄기', 'Off', '关', 'オフ'],
+  ['끄면 앱을 열 때마다 프로필을 다시 골라요. PIN을 건 프로필은 켜져 있어도 열 때마다 PIN을 물어요. (이 기기에만 적용)', 'When off, you choose a profile every time you open the app. Profiles with a PIN always ask for it when the app opens. (This device only)', '关闭后每次打开应用都要重新选择个人资料。设置了 PIN 的个人资料即使开启也会在每次打开时询问 PIN。（仅限本设备）', 'オフにするとアプリを開くたびにプロフィールを選びます。PINを設定したプロフィールは、オンでも開くたびにPINを聞きます。（この端末のみ）'],
   ['작게', 'Small', '小', '小'],
   ['크게', 'Large', '大', '大'],
   ['아주 크게', 'Extra large', '特大', '特大'],
@@ -468,7 +472,7 @@ const GUIDE = {
     ['🎁', '10. 포인트 상점', '공부해서 얻은 XP만큼 🪙 포인트가 쌓여요 (하루 최대 300P). 홈의 [포인트 상점]에서 모은 포인트로 기프티콘 교환을 신청하고, 발급 대기 중이면 취소해서 돌려받을 수 있어요.\n※ 지금은 기능 시험용이라 실제 기프티콘은 발송되지 않아요.'],
     ['🎓', '11. 학점 계산기', '홈의 [학점 계산기]에서 학기별로 과목·학점·성적을 넣으면 학기 평점, 전체 평점, 전공 평점, 이수 학점이 바로 계산돼요. 4.5 / 4.3 만점을 고를 수 있어요.\n[목표 평점 계산]에 목표와 남은 학점을 넣으면 앞으로 받아야 할 평균도 알려 줘요.'],
     ['📱', '12. 폰에 앱처럼 설치', '아이폰: 사파리 → 공유 → [홈 화면에 추가]\n안드로이드: 크롬 → ⋮ → [홈 화면에 추가]\n한 번 열면 인터넷 없이도 써요.'],
-    ['💡', '알아두면 좋아요', '• 어느 화면에서든 상단 🏠 버튼을 누르면 홈으로 가요.\n• 기록은 이 기기에만 저장돼요. 프로필 → [백업 파일 내보내기]로 옮겨요.\n• 스캔한 PDF는 읽을 수 없어요.\n• 수식은 "수식"으로 표시돼요.\n• 설명서는 상단 📖 버튼으로 언제든 다시 볼 수 있어요.'],
+    ['💡', '알아두면 좋아요', '• 어느 화면에서든 상단 🏠 버튼을 누르면 홈으로 가요.\n• 앱은 마지막 프로필로 바로 들어가요. 매번 고르고 싶으면 ⚙️ 설정 → [로그인 유지]를 끄고, 내 프로필에 PIN을 걸면 열 때마다 PIN을 물어요.\n• 기록은 이 기기에만 저장돼요. 프로필 → [백업 파일 내보내기]로 옮겨요.\n• 스캔한 PDF는 읽을 수 없어요.\n• 수식은 "수식"으로 표시돼요.\n• 설명서는 상단 📖 버튼으로 언제든 다시 볼 수 있어요.'],
   ],
   en: [
     ['👋', 'Welcome to SSRO', 'A self-study app that turns your lecture files into concept notes, questions and tests. Flip through a few pages to get started.'],
@@ -484,7 +488,7 @@ const GUIDE = {
     ['🎁', '10. Point shop', 'You earn 🪙 points equal to the XP you gain (up to 300P a day). In [Point shop] on Home, exchange points for gift vouchers, and cancel a pending request to get points back.\n※ This is a test version — no real vouchers are sent.'],
     ['🎓', '11. GPA calculator', 'In [GPA calculator] on Home, enter courses, credits and grades per semester to see semester GPA, overall GPA, major GPA and earned credits. Choose a 4.5 or 4.3 scale.\nEnter a target GPA and remaining credits to see the average you need.'],
     ['📱', '12. Install on your phone', 'iPhone: Safari → Share → [Add to Home Screen]\nAndroid: Chrome → ⋮ → [Add to Home screen]\nWorks offline after the first visit.'],
-    ['💡', 'Good to know', '• Tap 🏠 at the top on any screen to go Home.\n• Records stay on this device. Use Profile → [Export backup] to move them.\n• Scanned PDFs can’t be read.\n• Formulas show as "Formula".\n• Open this guide anytime with the 📖 button.'],
+    ['💡', 'Good to know', '• Tap 🏠 at the top on any screen to go Home.\n• The app opens your last profile. To choose every time, turn off ⚙️ Settings → [Stay signed in]. Profiles with a PIN ask for it each time the app opens.\n• Records stay on this device. Use Profile → [Export backup] to move them.\n• Scanned PDFs can’t be read.\n• Formulas show as "Formula".\n• Open this guide anytime with the 📖 button.'],
   ],
   zh: [
     ['👋', '欢迎使用 스스로(SSRO)', '只需上传讲义，就能自动生成概念整理、题目和考试的自主学习应用。翻几页就能上手。'],
@@ -500,7 +504,7 @@ const GUIDE = {
     ['🎁', '10. 积分商店', '学习获得多少 XP，就累积多少 🪙 积分（每天最多 300P）。在首页［积分商店］用积分申请兑换礼品券，待发放时可以取消并退回积分。\n※ 目前为功能测试版，不会真正发送礼品券。'],
     ['🎓', '11. 学分绩点计算器', '在首页［学分计算器］中按学期输入课程、学分和成绩，即可计算学期绩点、总绩点、专业绩点和已修学分。可选择 4.5 或 4.3 满分。\n输入目标绩点和剩余学分，还能算出今后需要的平均分。'],
     ['📱', '12. 像应用一样安装', 'iPhone：Safari → 分享 →［添加到主屏幕］\n安卓：Chrome → ⋮ →［添加到主屏幕］\n首次打开后可离线使用。'],
-    ['💡', '小贴士', '• 在任何页面点击顶部 🏠 按钮即可回到首页。\n• 记录只保存在本设备。可在个人资料 →［导出备份文件］迁移。\n• 无法读取扫描版 PDF。\n• 公式显示为“公式”。\n• 随时点击顶部 📖 按钮重新查看说明。'],
+    ['💡', '小贴士', '• 在任何页面点击顶部 🏠 按钮即可回到首页。\n• 应用会直接进入上次的个人资料。想每次都选择，请在 ⚙️ 设置中关闭［保持登录］；设置了 PIN 的个人资料每次打开都会询问 PIN。\n• 记录只保存在本设备。可在个人资料 →［导出备份文件］迁移。\n• 无法读取扫描版 PDF。\n• 公式显示为“公式”。\n• 随时点击顶部 📖 按钮重新查看说明。'],
   ],
   ja: [
     ['👋', 'ススロ(SSRO)へようこそ', '講義資料をアップするだけで、概念整理・問題・試験を自動で作る自主学習アプリです。数ページめくればすぐ使えます。'],
@@ -516,7 +520,7 @@ const GUIDE = {
     ['🎁', '10. ポイントショップ', '勉強で得たXPと同じだけ 🪙 ポイントがたまります（1日最大300P）。ホームの［ポイントショップ］でギフト券に交換を申し込み、発行待ちなら取り消してポイントを戻せます。\n※ 今は機能テスト用のため、実際のギフト券は送られません。'],
     ['🎓', '11. 成績(GPA)計算機', 'ホームの［学点計算機］で学期ごとに科目・単位・成績を入れると、学期GPA・全体GPA・専攻GPA・取得単位がすぐ計算されます。4.5 / 4.3 満点を選べます。\n目標GPAと残りの単位を入れると、これから必要な平均も分かります。'],
     ['📱', '12. スマホにアプリのように追加', 'iPhone：Safari → 共有 →［ホーム画面に追加］\nAndroid：Chrome → ⋮ →［ホーム画面に追加］\n一度開けばオフラインでも使えます。'],
-    ['💡', '知っておくと便利', '• どの画面でも上の 🏠 ボタンでホームに戻れます。\n• 記録はこの端末にのみ保存されます。プロフィール →［バックアップを書き出す］で移せます。\n• スキャンしたPDFは読めません。\n• 数式は「数式」と表示されます。\n• 上の 📖 ボタンでいつでも見直せます。'],
+    ['💡', '知っておくと便利', '• どの画面でも上の 🏠 ボタンでホームに戻れます。\n• アプリは前回のプロフィールで開きます。毎回選びたいときは ⚙️ 設定 →［ログイン状態を保持］をオフに。PINを設定したプロフィールは開くたびにPINを聞きます。\n• 記録はこの端末にのみ保存されます。プロフィール →［バックアップを書き出す］で移せます。\n• スキャンしたPDFは読めません。\n• 数式は「数式」と表示されます。\n• 上の 📖 ボタンでいつでも見直せます。'],
   ],
 };
 const GUIDE_UI = {
